@@ -1,82 +1,97 @@
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" If you want the french comments translated, just ask "
-"  Remplacement de Re: Re: ... n fois par Re[n]:       "
-"  dans la ligne courante,                             "
-"  en langage de script VIM                            "
-"                                                      "
-"  il y a probablement plus simple                     "
-"  mais apparemment ca marche                          "
-"  Par Dominique Baldo...                              "
-" Adapté par Luc Hermitte <hermitte@free.fr> pour :    "
-" - gérer les Réf. de certains outils trop francisés   "
-" - répondre par Re: tout simplement les 3/4 du temps  "
-"                                                      "
-" 28 Mars 2001                                         "
-"                                                      "
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"===============================================================
+" VIM script file.
+"
+" File          : Mail_Re.set
+" Author        : Dominique Baldo
+" Updated by	: Luc Hermitte <hermitte@free.fr>
+"                 <URL:http://hermitte.free.fr/vim/>
+" Version	: 1.2
+" Last update   : 28th july 2001
+"
+"---------------------------------------------------------------
+" Purpose	: Merge the occurencies of "Re:" and "Re[n]" within
+" 		  e-mails'subject in only one.
+"
+" Calling conv.	: Source this file and invoke Mail_Re(). Other solution :
+" 		  define -> map ,re :call Mail_Re()<cr>
+"
+"---------------------------------------------------------------
+" Updates	: 
+"   * ver 1.2	: translation of the comments
+"   * ver 1.1	: Handle "Réf" produced by some french e-mailers
+"		  Answer by "Re:" most of the time
+"   * ver 1.0	: Replace "Re: Re: ..." n times by "Re[n]:"
+"
+" TODO		:
+"   * Simplify the operations like for instance, the way "Re:" occurences
+"     are counted.
+"   * Enable to customize the string returned : currently, MergeRe(str)
+"     returns "Re[n]:" if there where a similar construct in the initial
+"     string, or "Re:" otherwise.
+"
+"===============================================================
 
-" Fonction substituant "Re:Re:Re:Re" par "Re:" et "Re:Re[2]" par "Re[3]"
-func! MergeRe(chaine)
-   "on recupere le "vrai" sujet (on enleve tous les Re:)
-   " d'abord, on remplace tous les Réf: et Re: par des Re: accolés
-   let sujet = substitute( a:chaine, '[Rr][éeÉE][fF]\s*\.\s*:\s*', 'Re:', 'g' )
-   let sujet = substitute( sujet, '[Rr][eE]\s*\(\[\d\+\]\)\=\s*:\s*', 'Re\1:', 'g' )
-   " on cherche le premier "Re:"
-   let rang=matchend(sujet,'Subject:\s*Re:\s*')
-   " s'il n'y en a pas, c'est qu'on a fini
-   if rang==-1
-      return sujet
+"
+"
+"===============================================================
+" Function	: MergeRe(string)
+" Purpose	: Substitute "Re:Re:Re:Re" by "Re:" and "Re:Re[2]" by "Re[3]"
+func! MergeRe(string)
+ " We retrieve  the "real" subjet (discarding of all the "Re:")
+   " But first, we replace all the "Réf.:" by "Re:" and erase spaces between
+   " "Re:"
+   let subject = substitute( a:string, '[Rr][éeÉE][fF]\s*\.\s*:\s*', 'Re:', 'g' )
+   let subject = substitute( subject, '[Rr][eE]\s*\(\[\d\+\]\)\=\s*:\s*', 'Re\1:', 'g' )
+   " We search for the first "Re:"
+   let rank=matchend(subject,'Subject:\s*Re:\s*')
+   " If none, it means we have finished
+   if rank==-1
+      return subject
    endif
-   " n: compteur de "Re:"   
+   " n: "Re:" counter
    let n=0
-   " Tant qu'il reste des "Re:" a enlever
-   while rang!=-1
-     " on les enleve un par un (histoire de les compter)
-     let sujet=strpart(sujet,rang,strlen(sujet))
-     " et on cherche le suivant *démarrant la ligne*
-     let rang=matchend(sujet,'^Re:\s*')
+   " Where there are "Re:" to discard ...
+   " TODO: extract "\(Re:)*" and get the length...
+   while rank!=-1
+     " We discard them one by one (in order to count them) ...
+     let subject=strpart(subject,rank,strlen(subject))
+     " ... and we search the next one that "starts the line".
+     let rank=matchend(subject,'^Re:\s*')
      let n=n+1       
    endw
    
-   " quand on arrive au bout, encore faut il verifier
-   " qu'il ne reste pas un Re[x]:
-   let num=matchstr(sujet,'^[Rr][Ee]\s*\[\s*[0-9]\+\s*\]\s*:\s*')
-   let rang=matchend(sujet,'^[Rr][Ee]\s*\[\s*[0-9]\+\s*\]\s*:\s*')
-   " s'il y avait un Re[x]:  % [TODO] optioner tout cela avec une variable
+   " Once at the end, we check for the presence of a "Re[x]:"
+   let num=matchstr(subject,'^[Rr][Ee]\s*\[\s*[0-9]\+\s*\]\s*:\s*')
+   let rank=matchend(subject,'^[Rr][Ee]\s*\[\s*[0-9]\+\s*\]\s*:\s*')
+   " If there were one: 
+   " 		 [TODO] define an option to customize the desired behaviour
    if num!=""
-      "on recupere le 'x' de Re[x]:
+      " We extract the number x from "Re[x]" ...
       let num=matchstr(num,'[0-9]\+')
-      " et on l'ajoute a notre compteur n
+      " ... and add it to n (the number of "Re:")
       let n = n + num
-      " en n'oubliant pas de virer Re[x]: du sujet
-      let sujet=strpart(sujet,rang,strlen(sujet)+1)
-      let sujet = 'Subject: Re[' . n . ']: ' . sujet 
+      " And we don't forget to discard "Re[x]:" from the subject
+      let subject=strpart(subject,rank,strlen(subject)+1)
+      let subject = 'Subject: Re[' . n . ']: ' . subject 
    else
-      let sujet = 'Subject: Re: ' .sujet
+      let subject = 'Subject: Re: ' .subject
    endif
 
-   " on renvoie le tout sous la forme Re[n]: sujet
-   return sujet
+   " Finally, we return the new subject 
+   return subject
 endf
 
-" TODO: autre idee - virer tous les espaces eventuels
-" entre les differents "Re:", recuperer tous les trucs
-" [Done]
-" de la forme "\(Re:\)*", prendre la taille de la chaine
-" et diviser par la taille de "Re:" (c'est a dire 3)
-" pour avoir le nombre de "Re:"
-
-""""""""""""""""""""""""""""""""""
-"   P R O G   P R I N C I P A L  "
-""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""
+"   M A I N   P R O G R A M  "
+""""""""""""""""""""""""""""""
 
 function! Mail_Re()
-  " on cherche le sujet  
+  " Find the subject
   normal 1G
   /^Subject: 
-  " on se met la ligne courante sur l'oreille
+  " Get the corresponding line
   let c=getline(line("."))
-  " on fusionne tous les Re: Re: Re: Re: en Re[4]: (par exemple)        
+  " And call MergeRe() on it.
   call setline(line("."),MergeRe(c))
 endf
 
