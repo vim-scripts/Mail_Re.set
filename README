@@ -1,0 +1,5 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=47
+
+May be, you have allready noticed and used the two macros : ,re that merges all the "[Rr][Ee]:" in the subject in only one "Re:" and ,Re that merges "[Rr][Re]: Re[n]" in "Re[n+1]". 
+This file combines the features from both macros without any visual bell or incremention of the first number in the subject. 
+
